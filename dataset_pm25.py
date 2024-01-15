@@ -38,12 +38,12 @@ class PM25_Dataset(Dataset):
 
         df = pd.read_csv(
             "./data/ours/re15.csv",
-            index_col="datetime",
+            index_col="Datetime",
             parse_dates=True,
         )
         df_gt = pd.read_csv(
             "./data/ours/miss30.csv",
-            index_col="datetime",
+            index_col="Datetime",
             parse_dates=True,
         )
         for i in range(len(month_list)):
