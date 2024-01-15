@@ -4,6 +4,8 @@ import torch.nn.functional as F
 import math
 from linear_attention_transformer import LinearAttentionTransformer
 
+from layers.S4Layer import S4Layer
+
 
 def get_torch_trans(heads=8, layers=1, channels=64):
     encoder_layer = nn.TransformerEncoderLayer(
@@ -11,16 +13,17 @@ def get_torch_trans(heads=8, layers=1, channels=64):
     )
     return nn.TransformerEncoder(encoder_layer, num_layers=layers)
 
-def get_linear_trans(heads=8,layers=1,channels=64,localheads=0,localwindow=0):
 
-  return LinearAttentionTransformer(
-        dim = channels,
-        depth = layers,
-        heads = heads,
-        max_seq_len = 256,
-        n_local_attn_heads = 0, 
-        local_attn_window_size = 0,
+def get_linear_trans(heads=8, layers=1, channels=64, localheads=0, localwindow=0):
+    return LinearAttentionTransformer(
+        dim=channels,
+        depth=layers,
+        heads=heads,
+        max_seq_len=256,
+        n_local_attn_heads=0,
+        local_attn_window_size=0,
     )
+
 
 def Conv1d_with_init(in_channels, out_channels, kernel_size):
     layer = nn.Conv1d(in_channels, out_channels, kernel_size)
@@ -117,14 +120,15 @@ class ResidualBlock(nn.Module):
         self.mid_projection = Conv1d_with_init(channels, 2 * channels, 1)
         self.output_projection = Conv1d_with_init(channels, 2 * channels, 1)
 
+        self.s4_init_layer = S4Layer(features=channels, lmax=100)
+
         self.is_linear = is_linear
         if is_linear:
-            self.time_layer = get_linear_trans(heads=nheads,layers=1,channels=channels)
-            self.feature_layer = get_linear_trans(heads=nheads,layers=1,channels=channels)
+            self.time_layer = get_linear_trans(heads=nheads, layers=1, channels=channels)
+            self.feature_layer = get_linear_trans(heads=nheads, layers=1, channels=channels)
         else:
             self.time_layer = get_torch_trans(heads=nheads, layers=1, channels=channels)
             self.feature_layer = get_torch_trans(heads=nheads, layers=1, channels=channels)
-
 
     def forward_time(self, y, base_shape):
         B, channel, K, L = base_shape
@@ -138,7 +142,6 @@ class ResidualBlock(nn.Module):
             y = self.time_layer(y.permute(2, 0, 1)).permute(1, 2, 0)
         y = y.reshape(B, K, channel, L).permute(0, 2, 1, 3).reshape(B, channel, K * L)
         return y
-
 
     def forward_feature(self, y, base_shape):
         B, channel, K, L = base_shape
@@ -160,8 +163,12 @@ class ResidualBlock(nn.Module):
         diffusion_emb = self.diffusion_projection(diffusion_emb).unsqueeze(-1)  # (B,channel,1)
         y = x + diffusion_emb
 
-        y = self.forward_time(y, base_shape)
-        y = self.forward_feature(y, base_shape)  # (B,channel,K*L)
+        y = self.s4_init_layer(y.permute(2, 0, 1)).permute(1, 2, 0)
+
+        y_time = self.forward_time(y, base_shape)
+        y_feature = self.forward_feature(y, base_shape)  # (B,channel,K*L)
+        y = torch.sigmoid(y_time) * torch.tanh(y_feature)
+
         y = self.mid_projection(y)  # (B,2*channel,K*L)
 
         _, cond_dim, _, _ = cond_info.shape

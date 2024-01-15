@@ -1,4 +1,7 @@
 import argparse
+import random
+
+import numpy
 import torch
 import datetime
 import json
@@ -8,6 +11,20 @@ import os
 from dataset_pm25 import get_dataloader
 from main_model import CSDI_PM25
 from utils import train, evaluate
+
+
+def seed_torch(seed=1000):  # 1029,1030
+    random.seed(seed)
+    # os.environ['PYTHONHASHSEED'] = str(seed)  # 为了禁止hash随机化，使得实验可复现
+    numpy.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+
+
+seed_torch(1000)
 
 parser = argparse.ArgumentParser(description="CSDI")
 parser.add_argument("--config", type=str, default="base.yaml")
@@ -34,9 +51,9 @@ config["model"]["target_strategy"] = args.targetstrategy
 
 print(json.dumps(config, indent=4))
 
-current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S") 
+current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 foldername = (
-    "./save/pm25_validationindex" + str(args.validationindex) + "_" + current_time + "/"
+        "./save/pm25_validationindex" + str(args.validationindex) + "_" + current_time + "/"
 )
 
 print('model folder:', foldername)
