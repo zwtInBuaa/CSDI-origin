@@ -76,12 +76,11 @@ class CSDI_base(nn.Module):
             if self.target_strategy == "mix" and mask_choice > 0.5:
                 cond_mask[i] = rand_mask[i]
             else:  # draw another sample for histmask (i-1 corresponds to another sample)
-                cond_mask[i] = cond_mask[i] * for_pattern_mask[i - 1] 
+                cond_mask[i] = cond_mask[i] * for_pattern_mask[i - 1]
         return cond_mask
 
     def get_test_pattern_mask(self, observed_mask, test_pattern_mask):
         return observed_mask * test_pattern_mask
-
 
     def get_side_info(self, observed_tp, cond_mask):
         B, K, L = cond_mask.shape
@@ -103,7 +102,7 @@ class CSDI_base(nn.Module):
         return side_info
 
     def calc_loss_valid(
-        self, observed_data, cond_mask, observed_mask, side_info, is_train
+            self, observed_data, cond_mask, observed_mask, side_info, is_train
     ):
         loss_sum = 0
         for t in range(self.num_steps):  # calculate loss for all t
@@ -114,7 +113,7 @@ class CSDI_base(nn.Module):
         return loss_sum / self.num_steps
 
     def calc_loss(
-        self, observed_data, cond_mask, observed_mask, side_info, is_train, set_t=-1
+            self, observed_data, cond_mask, observed_mask, side_info, is_train, set_t=-1
     ):
         B, K, L = observed_data.shape
         if is_train != 1:  # for validation
@@ -179,8 +178,8 @@ class CSDI_base(nn.Module):
                 if t > 0:
                     noise = torch.randn_like(current_sample)
                     sigma = (
-                        (1.0 - self.alpha[t - 1]) / (1.0 - self.alpha[t]) * self.beta[t]
-                    ) ** 0.5
+                                    (1.0 - self.alpha[t - 1]) / (1.0 - self.alpha[t]) * self.beta[t]
+                            ) ** 0.5
                     current_sample += sigma * noise
 
             imputed_samples[:, i] = current_sample.detach()
@@ -229,12 +228,12 @@ class CSDI_base(nn.Module):
             samples = self.impute(observed_data, cond_mask, side_info, n_samples)
 
             for i in range(len(cut_length)):  # to avoid double evaluation
-                target_mask[i, ..., 0 : cut_length[i].item()] = 0
+                target_mask[i, ..., 0: cut_length[i].item()] = 0
         return samples, observed_data, target_mask, observed_mask, observed_tp
 
 
 class CSDI_PM25(CSDI_base):
-    def __init__(self, config, device, target_dim=36):
+    def __init__(self, config, device, target_dim=72):
         super(CSDI_PM25, self).__init__(target_dim, config, device)
 
     def process_data(self, batch):
@@ -287,7 +286,6 @@ class CSDI_Physio(CSDI_base):
         )
 
 
-
 class CSDI_Forecasting(CSDI_base):
     def __init__(self, config, device, target_dim):
         super(CSDI_Forecasting, self).__init__(target_dim, config, device)
@@ -307,7 +305,7 @@ class CSDI_Forecasting(CSDI_base):
         cut_length = torch.zeros(len(observed_data)).long().to(self.device)
         for_pattern_mask = observed_mask
 
-        feature_id=torch.arange(self.target_dim_base).unsqueeze(0).expand(observed_data.shape[0],-1).to(self.device)
+        feature_id = torch.arange(self.target_dim_base).unsqueeze(0).expand(observed_data.shape[0], -1).to(self.device)
 
         return (
             observed_data,
@@ -316,32 +314,31 @@ class CSDI_Forecasting(CSDI_base):
             gt_mask,
             for_pattern_mask,
             cut_length,
-            feature_id, 
-        )        
+            feature_id,
+        )
 
-    def sample_features(self,observed_data, observed_mask,feature_id,gt_mask):
+    def sample_features(self, observed_data, observed_mask, feature_id, gt_mask):
         size = self.num_sample_features
         self.target_dim = size
         extracted_data = []
         extracted_mask = []
         extracted_feature_id = []
         extracted_gt_mask = []
-        
+
         for k in range(len(observed_data)):
             ind = np.arange(self.target_dim_base)
             np.random.shuffle(ind)
-            extracted_data.append(observed_data[k,ind[:size]])
-            extracted_mask.append(observed_mask[k,ind[:size]])
-            extracted_feature_id.append(feature_id[k,ind[:size]])
-            extracted_gt_mask.append(gt_mask[k,ind[:size]])
-        extracted_data = torch.stack(extracted_data,0)
-        extracted_mask = torch.stack(extracted_mask,0)
-        extracted_feature_id = torch.stack(extracted_feature_id,0)
-        extracted_gt_mask = torch.stack(extracted_gt_mask,0)
-        return extracted_data, extracted_mask,extracted_feature_id, extracted_gt_mask
+            extracted_data.append(observed_data[k, ind[:size]])
+            extracted_mask.append(observed_mask[k, ind[:size]])
+            extracted_feature_id.append(feature_id[k, ind[:size]])
+            extracted_gt_mask.append(gt_mask[k, ind[:size]])
+        extracted_data = torch.stack(extracted_data, 0)
+        extracted_mask = torch.stack(extracted_mask, 0)
+        extracted_feature_id = torch.stack(extracted_feature_id, 0)
+        extracted_gt_mask = torch.stack(extracted_gt_mask, 0)
+        return extracted_data, extracted_mask, extracted_feature_id, extracted_gt_mask
 
-
-    def get_side_info(self, observed_tp, cond_mask,feature_id=None):
+    def get_side_info(self, observed_tp, cond_mask, feature_id=None):
         B, K, L = cond_mask.shape
 
         time_embed = self.time_embedding(observed_tp, self.emb_time_dim)  # (B,L,emb)
@@ -353,7 +350,7 @@ class CSDI_Forecasting(CSDI_base):
             )  # (K,emb)
             feature_embed = feature_embed.unsqueeze(0).unsqueeze(0).expand(B, L, -1, -1)
         else:
-            feature_embed = self.embed_layer(feature_id).unsqueeze(1).expand(-1,L,-1,-1)
+            feature_embed = self.embed_layer(feature_id).unsqueeze(1).expand(-1, L, -1, -1)
         side_info = torch.cat([time_embed, feature_embed], dim=-1)  # (B,L,K,*)
         side_info = side_info.permute(0, 3, 2, 1)  # (B,*,K,L)
 
@@ -371,18 +368,18 @@ class CSDI_Forecasting(CSDI_base):
             gt_mask,
             _,
             _,
-            feature_id, 
+            feature_id,
         ) = self.process_data(batch)
         if is_train == 1 and (self.target_dim_base > self.num_sample_features):
-            observed_data, observed_mask,feature_id,gt_mask = \
-                    self.sample_features(observed_data, observed_mask,feature_id,gt_mask)
+            observed_data, observed_mask, feature_id, gt_mask = \
+                self.sample_features(observed_data, observed_mask, feature_id, gt_mask)
         else:
             self.target_dim = self.target_dim_base
             feature_id = None
 
         if is_train == 0:
             cond_mask = gt_mask
-        else: #test pattern
+        else:  # test pattern
             cond_mask = self.get_test_pattern_mask(
                 observed_mask, gt_mask
             )
@@ -393,8 +390,6 @@ class CSDI_Forecasting(CSDI_base):
 
         return loss_func(observed_data, cond_mask, observed_mask, side_info, is_train)
 
-
-
     def evaluate(self, batch, n_samples):
         (
             observed_data,
@@ -403,12 +398,12 @@ class CSDI_Forecasting(CSDI_base):
             gt_mask,
             _,
             _,
-            feature_id, 
+            feature_id,
         ) = self.process_data(batch)
 
         with torch.no_grad():
             cond_mask = gt_mask
-            target_mask = observed_mask * (1-gt_mask)
+            target_mask = observed_mask * (1 - gt_mask)
 
             side_info = self.get_side_info(observed_tp, cond_mask)
 

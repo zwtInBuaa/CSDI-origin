@@ -6,22 +6,22 @@ import torch
 
 
 class PM25_Dataset(Dataset):
-    def __init__(self, eval_length=36, target_dim=36, mode="train", validindex=0):
+    def __init__(self, eval_length=32, target_dim=72, mode="train", validindex=0):
         self.eval_length = eval_length
         self.target_dim = target_dim
 
-        path = "./data/pm25/pm25_meanstd.pk"
+        path = "./data/ours/our_meanstd.pk"
         with open(path, "rb") as f:
             self.train_mean, self.train_std = pickle.load(f)
         if mode == "train":
             month_list = [1, 2, 4, 5, 7, 8, 10, 11]
             # 1st,4th,7th,10th months are excluded from histmask (since the months are used for creating missing patterns in test dataset)
-            flag_for_histmask = [0, 1, 0, 1, 0, 1, 0, 1] 
+            flag_for_histmask = [0, 1, 0, 1, 0, 1, 0, 1]
             month_list.pop(validindex)
             flag_for_histmask.pop(validindex)
         elif mode == "valid":
             month_list = [1, 2, 4, 5, 7, 8, 10, 11]
-            month_list = month_list[validindex : validindex + 1]
+            month_list = month_list[validindex: validindex + 1]
         elif mode == "test":
             month_list = [3, 6, 9, 12]
         self.month_list = month_list
@@ -37,12 +37,12 @@ class PM25_Dataset(Dataset):
         self.cut_length = []  # excluded from evaluation targets
 
         df = pd.read_csv(
-            "./data/pm25/Code/STMVL/SampleData/pm25_ground.txt",
+            "./data/ours/re15.csv",
             index_col="datetime",
             parse_dates=True,
         )
         df_gt = pd.read_csv(
-            "./data/pm25/Code/STMVL/SampleData/pm25_missing.txt",
+            "./data/ours/miss30.csv",
             index_col="datetime",
             parse_dates=True,
         )
@@ -63,8 +63,8 @@ class PM25_Dataset(Dataset):
             c_mask = 1 - current_df.isnull().values
             c_gt_mask = 1 - current_df_gt.isnull().values
             c_data = (
-                (current_df.fillna(0).values - self.train_mean) / self.train_std
-            ) * c_mask
+                             (current_df.fillna(0).values - self.train_mean) / self.train_std
+                     ) * c_mask
 
             self.observed_mask.append(c_mask)
             self.gt_mask.append(c_gt_mask)
@@ -116,17 +116,17 @@ class PM25_Dataset(Dataset):
         hist_index = self.position_in_month_histmask[index]
         s = {
             "observed_data": self.observed_data[c_month][
-                c_index : c_index + self.eval_length
-            ],
+                             c_index: c_index + self.eval_length
+                             ],
             "observed_mask": self.observed_mask[c_month][
-                c_index : c_index + self.eval_length
-            ],
+                             c_index: c_index + self.eval_length
+                             ],
             "gt_mask": self.gt_mask[c_month][
-                c_index : c_index + self.eval_length
-            ],
+                       c_index: c_index + self.eval_length
+                       ],
             "hist_mask": self.observed_mask[hist_month][
-                hist_index : hist_index + self.eval_length
-            ],
+                         hist_index: hist_index + self.eval_length
+                         ],
             "timepoints": np.arange(self.eval_length),
             "cut_length": self.cut_length[org_index],
         }
