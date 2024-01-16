@@ -28,7 +28,7 @@ seed_torch(1000)
 
 parser = argparse.ArgumentParser(description="CSDI")
 parser.add_argument("--config", type=str, default="base.yaml")
-parser.add_argument('--device', default='cuda:0', help='Device for Attack')
+parser.add_argument('--device', default='cuda:1', help='Device for Attack')
 parser.add_argument("--modelfolder", type=str, default="")
 parser.add_argument(
     "--targetstrategy", type=str, default="mix", choices=["mix", "random", "historical"]
