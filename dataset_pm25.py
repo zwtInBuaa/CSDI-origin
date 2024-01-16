@@ -6,11 +6,11 @@ import torch
 
 
 class PM25_Dataset(Dataset):
-    def __init__(self, eval_length=32, target_dim=72, mode="train", validindex=0):
+    def __init__(self, eval_length=36, target_dim=36, mode="train", validindex=0):
         self.eval_length = eval_length
         self.target_dim = target_dim
 
-        path = "./data/ours/our_meanstd.pk"
+        path = "./data/pm25/pm25_meanstd.pk"
         with open(path, "rb") as f:
             self.train_mean, self.train_std = pickle.load(f)
         if mode == "train":
@@ -37,13 +37,13 @@ class PM25_Dataset(Dataset):
         self.cut_length = []  # excluded from evaluation targets
 
         df = pd.read_csv(
-            "./data/ours/re15.csv",
-            index_col="Datetime",
+            "./data/pm25/pm25_ground.txt",
+            index_col="datetime",
             parse_dates=True,
         )
         df_gt = pd.read_csv(
-            "./data/ours/miss30.csv",
-            index_col="Datetime",
+            "./data/pm25/pm25_missing.txt",
+            index_col="datetime",
             parse_dates=True,
         )
         for i in range(len(month_list)):

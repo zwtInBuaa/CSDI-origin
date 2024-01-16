@@ -121,7 +121,7 @@ class ResidualBlock(nn.Module):
         self.output_projection = Conv1d_with_init(channels, 2 * channels, 1)
 
         self.s4_init_layer = S4Layer(features=channels, lmax=100)
-        self.s4_end_layer = S4Layer(features=2 * channels, lmax=100)
+        # self.s4_end_layer = S4Layer(features=2 * channels, lmax=100)
 
         self.is_linear = is_linear
         if is_linear:
@@ -177,7 +177,7 @@ class ResidualBlock(nn.Module):
         cond_info = self.cond_projection(cond_info)  # (B,2*channel,K*L)
         y = y + cond_info
 
-        y = self.s4_end_layer(y.permute(2, 0, 1)).permute(1, 2, 0)
+        # y = self.s4_end_layer(y.permute(2, 0, 1)).permute(1, 2, 0)
 
         gate, filter = torch.chunk(y, 2, dim=1)
         y = torch.sigmoid(gate) * torch.tanh(filter)  # (B,channel,K*L)
